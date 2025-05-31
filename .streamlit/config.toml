@@ -6,8 +6,20 @@ textColor = "#262730"
 font = "sans serif"
 
 [server]
-enableCORS = false
+enableCORS = true
 enableXsrfProtection = true
+maxUploadSize = 10
+maxMessageSize = 200
 
 [browser]
-gatherUsageStats = false 
+gatherUsageStats = false
+serverAddress = "localhost"
+serverPort = 8501
+
+[runner]
+magicEnabled = true
+fastReruns = true
+
+[client]
+showErrorDetails = false
+toolbarMode = "minimal" 

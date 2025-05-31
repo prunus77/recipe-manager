@@ -31,6 +31,18 @@ ENV/
 *.swp
 *.swo
 
+# Streamlit
+.streamlit/secrets.toml
+
+# MongoDB
+data/
+
+# Environment variables
+.env
+
+# Logs
+*.log
+
 # OS
 .DS_Store
 .DS_Store?
@@ -38,8 +50,4 @@ ENV/
 .Spotlight-V100
 .Trashes
 ehthumbs.db
-Thumbs.db
-
-# Project specific
-data/
-*.log 
+Thumbs.db 

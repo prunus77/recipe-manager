@@ -1,50 +1,86 @@
 # Recipe Manager
 
-A Streamlit-based web application for managing and sharing recipes.
+A Streamlit-based recipe management application with MongoDB integration.
 
 ## Features
 
-- Store and manage user-submitted recipes
-- Categorize recipes with tags (e.g., vegan, gluten-free, spicy)
-- Search recipes by name, ingredients, or tags
-- Public and private recipe sharing options
-- Anonymous recipe submission
-- User authentication system
-- Image upload support for recipes
+- User authentication and authorization
+- Recipe management (create, read, update, delete)
+- Recipe categorization and tagging
+- Image upload support
+- Admin panel for user management
+- Responsive design
 
-## Installation
+## Local Development
 
-1. Clone this repository
-2. Install the required dependencies:
+1. Clone the repository:
+```bash
+git clone https://github.com/prunus77/recipe-manager.git
+cd recipe-manager
+```
+
+2. Create and activate a virtual environment:
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+3. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-## Usage
+4. Set up MongoDB:
+   - Install MongoDB locally or use MongoDB Atlas
+   - Create a `.streamlit/secrets.toml` file with your MongoDB connection string:
+```toml
+[mongodb]
+connection_string = "your_mongodb_connection_string"
+```
 
-1. Run the application:
+5. Run the application:
 ```bash
 streamlit run app.py
 ```
 
-2. Open your web browser and navigate to the URL shown in the terminal (typically http://localhost:8501)
+## Deployment on Streamlit Cloud
 
-## Features
+1. Fork this repository to your GitHub account
 
-- **Home**: View featured recipes
-- **Add Recipe**: Submit new recipes with details and images
-- **Search Recipes**: Find recipes by name, ingredients, or tags
-- **Login/Register**: Create an account or sign in to access additional features
+2. Go to [share.streamlit.io](https://share.streamlit.io/)
 
-## Data Storage
+3. Sign in with your GitHub account
 
-The application stores data locally in JSON files:
-- `data/recipes.json`: Stores recipe information
-- `data/users.json`: Stores user account information
-- `data/`: Directory for storing recipe images
+4. Click "New app"
 
-## Security Notes
+5. Select your repository and branch
 
-- Passwords are stored in plain text (for demonstration purposes only)
-- In a production environment, implement proper password hashing and security measures
-- Consider using a proper database system for production use 
+6. Set the main file path to `app.py`
+
+7. Add your MongoDB connection string in the app's secrets:
+   - Go to app settings
+   - Click on "Secrets"
+   - Add your MongoDB connection string:
+```toml
+[mongodb]
+connection_string = "your_mongodb_connection_string"
+```
+
+8. Click "Deploy"
+
+## Environment Variables
+
+- `MONGO_URI`: MongoDB connection string
+- `ADMIN_PASSWORD`: Admin user password (default: 'admin123')
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details. 

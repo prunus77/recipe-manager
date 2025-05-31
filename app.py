@@ -10,7 +10,15 @@ import requests
 from io import BytesIO
 from db_utils import (
     create_user, verify_user, get_all_users,
-    update_user_status, delete_user, get_user_stats
+    update_user_status, delete_user, get_user_stats,
+    get_all_recipes
+)
+
+# Set page config at the very beginning
+st.set_page_config(
+    page_title="Recipe Manager",
+    page_icon="🍳",
+    layout="wide"
 )
 
 # Initialize session state
@@ -18,14 +26,24 @@ if 'user' not in st.session_state:
     st.session_state.user = None
 if 'user_role' not in st.session_state:
     st.session_state.user_role = None
+if 'active_tab' not in st.session_state:
+    st.session_state.active_tab = "Home"
 
-# Create data directory if it doesn't exist
-DATA_DIR = Path("data")
-DATA_DIR.mkdir(exist_ok=True)
+# Cache the data loading functions
+@st.cache_data(ttl=300)  # Cache for 5 minutes
+def load_recipes():
+    return get_all_recipes()
 
-# File paths
-RECIPES_FILE = DATA_DIR / "recipes.json"
-USERS_FILE = DATA_DIR / "users.json"
+@st.cache_data(ttl=300)
+def load_user_stats():
+    return get_user_stats()
+
+# Optimize image loading
+@st.cache_data(ttl=3600)  # Cache for 1 hour
+def load_image(image_path):
+    if os.path.exists(image_path):
+        return Image.open(image_path)
+    return None
 
 def download_image(url, filename):
     try:
@@ -299,20 +317,10 @@ def save_data(recipes, users):
         json.dump(users, f)
 
 def main():
-    st.set_page_config(
-        page_title="Recipe Manager",
-        page_icon="🍳",
-        layout="wide"
-    )
-
     st.title("🍳 Recipe Manager")
     
     # Sidebar navigation
     st.sidebar.title("Navigation")
-    
-    # Initialize active_tab in session state if it doesn't exist
-    if 'active_tab' not in st.session_state:
-        st.session_state.active_tab = "Home"
     
     # Menu buttons in sidebar
     if st.sidebar.button("🏠 Home", use_container_width=True):
@@ -339,7 +347,7 @@ def main():
         st.sidebar.success(f"Logged in as: {st.session_state.user}")
         if st.session_state.user_role == 'admin':
             st.sidebar.info("Role: Administrator")
-        if st.session_state.button("Logout", use_container_width=True):
+        if st.sidebar.button("Logout", use_container_width=True):
             st.session_state.user = None
             st.session_state.user_role = None
             st.session_state.active_tab = "Home"
@@ -347,7 +355,8 @@ def main():
     else:
         st.sidebar.info("Not logged in")
 
-    recipes, users = load_data()
+    # Load data with caching
+    recipes = load_recipes()
 
     if st.session_state.active_tab == "Home":
         st.header("Welcome to Recipe Manager!")
@@ -358,11 +367,13 @@ def main():
         if recipes:
             # Create three columns for the featured recipes
             cols = st.columns(3)
-            for idx, recipe in enumerate(recipes[:9]):  # Changed from 3 to 9 recipes
-                with cols[idx % 3]:  # Use modulo to cycle through columns
+            for idx, recipe in enumerate(recipes[:9]):
+                with cols[idx % 3]:
                     st.subheader(recipe['name'])
-                    if 'image_path' in recipe and os.path.exists(recipe['image_path']):
-                        st.image(recipe['image_path'], width=300)
+                    if 'image_path' in recipe:
+                        image = load_image(recipe['image_path'])
+                        if image:
+                            st.image(image, width=300)
                     st.write(f"**Category:** {recipe['category']}")
                     st.write(f"**Tags:** {', '.join(recipe['tags'])}")
                     with st.expander("View Recipe Details"):
@@ -546,7 +557,7 @@ def main():
         
         # User Statistics
         st.subheader("User Statistics")
-        stats = get_user_stats()
+        stats = load_user_stats()
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.metric("Total Users", stats['total_users'])
