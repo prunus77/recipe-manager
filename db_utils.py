@@ -6,24 +6,23 @@ from dotenv import load_dotenv
 from db_config import get_users_collection, get_recipes_collection, with_db_retry
 from bson import ObjectId
 
-# Using bcrypt for password hashing
 # Load environment variables
 load_dotenv()
 
-# MongoDB connection
-MONGO_URI = os.getenv('MONGO_URI', 'mongodb://localhost:27017')
-client = MongoClient(MONGO_URI)
-db = client['recipe_manager']
+def hash_password(password):
+    """Hash a password using bcrypt"""
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
-# Collections
-users = db['users']
-recipes = db['recipes']
+def verify_password(password, hashed):
+    """Verify a password against its hash"""
+    return bcrypt.checkpw(password.encode('utf-8'), hashed)
 
 def init_db():
     """Initialize database with admin user if not exists"""
+    users = get_users_collection()
     if not users.find_one({'role': 'admin'}):
         admin_password = os.getenv('ADMIN_PASSWORD', 'admin123')
-        hashed_password = bcrypt.hashpw(admin_password.encode('utf-8'), bcrypt.gensalt())
+        hashed_password = hash_password(admin_password)
         users.insert_one({
             'username': 'admin',
             'password': hashed_password,
@@ -41,8 +40,8 @@ def create_user(username, password, email):
     if users.find_one({"$or": [{"username": username}, {"email": email}]}):
         return False, "Username or email already exists"
     
-    # Hash password using bcrypt
-    hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+    # Hash password
+    hashed = hash_password(password)
     
     # Create user document
     user = {
@@ -72,7 +71,7 @@ def verify_user(username, password):
     if not user.get("is_active", True):
         return False, "User account is inactive"
     
-    if bcrypt.checkpw(password.encode('utf-8'), user["password"]):
+    if verify_password(password, user["password"]):
         return True, {
             "username": user["username"],
             "role": user.get("role", "user")
@@ -119,7 +118,6 @@ def get_user_stats():
         "regular_users": regular_users
     }
 
-# Recipe-related functions
 @with_db_retry()
 def get_all_recipes():
     """Get all recipes with retry logic"""
