@@ -315,7 +315,7 @@ def main():
         st.sidebar.success(f"Logged in as: {st.session_state.user}")
         if st.session_state.user_role == 'admin':
             st.sidebar.info("Role: Administrator")
-        if st.sidebar.button("Logout", use_container_width=True):
+        if st.session_state.button("Logout", use_container_width=True):
             st.session_state.user = None
             st.session_state.user_role = None
             st.session_state.active_tab = "Home"
