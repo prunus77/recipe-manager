@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from db_config import get_users_collection, get_recipes_collection, with_db_retry
 from bson import ObjectId
 
+# Using bcrypt for password hashing
 # Load environment variables
 load_dotenv()
 
