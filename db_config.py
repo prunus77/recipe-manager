@@ -3,18 +3,22 @@ from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 import streamlit as st
 import time
 from functools import wraps
+import os
 
 # MongoDB connection settings with retry logic
 def get_mongo_client(max_retries=3, retry_delay=1):
     """Create MongoDB client with retry logic"""
     for attempt in range(max_retries):
         try:
-            # Try to get connection string from Streamlit secrets first
-            try:
-                MONGO_URI = st.secrets["mongodb"]["connection_string"]
-            except:
-                # Fallback to local connection if secrets not available
-                MONGO_URI = "mongodb://localhost:27017/"
+            # Try to get connection string from environment variable first
+            MONGO_URI = os.getenv('MONGODB_CONNECTION_STRING')
+            if not MONGO_URI:
+                # Fallback to Streamlit secrets
+                try:
+                    MONGO_URI = st.secrets["mongodb"]["connection_string"]
+                except:
+                    # Fallback to local connection if secrets not available
+                    MONGO_URI = "mongodb://localhost:27017/"
             
             client = MongoClient(
                 MONGO_URI,

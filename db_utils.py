@@ -3,7 +3,16 @@ from datetime import datetime
 import bcrypt
 import os
 from dotenv import load_dotenv
-from werkzeug.security import generate_password_hash, check_password_hash
+try:
+    from werkzeug.security import generate_password_hash, check_password_hash
+except ImportError:
+    # Fallback to bcrypt if werkzeug is not available
+    def generate_password_hash(password):
+        return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+    
+    def check_password_hash(hashed_password, password):
+        return bcrypt.checkpw(password.encode('utf-8'), hashed_password)
+
 from db_config import get_users_collection, get_recipes_collection, with_db_retry
 from bson import ObjectId
 
