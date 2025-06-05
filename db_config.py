@@ -5,7 +5,6 @@ import time
 from functools import wraps
 import os
 
-# MongoDB connection settings with retry logic
 def get_mongo_client(max_retries=3, retry_delay=1):
     """Create MongoDB client with retry logic"""
     for attempt in range(max_retries):
@@ -22,12 +21,12 @@ def get_mongo_client(max_retries=3, retry_delay=1):
             
             client = MongoClient(
                 MONGO_URI,
-                serverSelectionTimeoutMS=2000,  # Reduced timeout
-                connectTimeoutMS=2000,
-                maxPoolSize=10,  # Reduced pool size
-                minPoolSize=5,
-                maxIdleTimeMS=30000,  # Close idle connections after 30 seconds
-                waitQueueTimeoutMS=2000,  # Wait queue timeout
+                serverSelectionTimeoutMS=5000,  # Increased timeout for better reliability
+                connectTimeoutMS=5000,
+                maxPoolSize=50,  # Increased pool size for better performance
+                minPoolSize=10,
+                maxIdleTimeMS=60000,  # Increased idle time
+                waitQueueTimeoutMS=5000,
                 retryWrites=True,
                 retryReads=True
             )
@@ -35,7 +34,7 @@ def get_mongo_client(max_retries=3, retry_delay=1):
             client.admin.command('ping')
             return client
         except (ConnectionFailure, ServerSelectionTimeoutError) as e:
-            if attempt == max_retries - 1:  # Last attempt
+            if attempt == max_retries - 1:
                 st.error(f"Failed to connect to MongoDB after {max_retries} attempts: {str(e)}")
                 raise
             time.sleep(retry_delay)
@@ -70,12 +69,13 @@ def init_db(db):
         db.recipes.create_index("category")
         db.recipes.create_index("tags")
         db.recipes.create_index("created_by")
+        db.recipes.create_index("created_at")
     except Exception as e:
         st.error(f"Failed to create indexes: {str(e)}")
         raise
 
-# Decorator for database operations with caching
 def with_db_retry(max_retries=3, retry_delay=1):
+    """Decorator for database operations with retry logic"""
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -91,9 +91,10 @@ def with_db_retry(max_retries=3, retry_delay=1):
         return wrapper
     return decorator
 
-# Collections access functions
 def get_users_collection():
+    """Get users collection"""
     return get_db().users
 
 def get_recipes_collection():
+    """Get recipes collection"""
     return get_db().recipes 
