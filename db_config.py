@@ -1,13 +1,8 @@
 from pymongo import MongoClient
-import os
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
 
 # MongoDB connection settings
-MONGO_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/")
-DB_NAME = os.getenv("MONGODB_DB_NAME", "recipe_manager")
+MONGO_URI = "mongodb://localhost:27017/"
+DB_NAME = "recipe_manager"
 
 # Create MongoDB client
 client = MongoClient(MONGO_URI)

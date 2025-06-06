@@ -31,15 +31,6 @@ ENV/
 *.swp
 *.swo
 
-# Streamlit
-.streamlit/secrets.toml
-
-# MongoDB
-data/db/
-
-# Environment variables
-.env
-
 # OS
 .DS_Store
 .DS_Store?
@@ -50,4 +41,5 @@ ehthumbs.db
 Thumbs.db
 
 # Project specific
+data/
 *.log 

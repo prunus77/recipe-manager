@@ -8,7 +8,10 @@ import os
 from pathlib import Path
 import requests
 from io import BytesIO
-import hashlib
+from db_utils import (
+    create_user, verify_user, get_all_users,
+    update_user_status, delete_user, get_user_stats
+)
 
 # Initialize session state
 if 'user' not in st.session_state:
@@ -23,97 +26,6 @@ DATA_DIR.mkdir(exist_ok=True)
 # File paths
 RECIPES_FILE = DATA_DIR / "recipes.json"
 USERS_FILE = DATA_DIR / "users.json"
-
-def hash_password(password):
-    """Hash a password for storing."""
-    return hashlib.sha256(password.encode()).hexdigest()
-
-def verify_user(username, password):
-    """Verify user credentials."""
-    try:
-        recipes, users = load_data()
-        for user in users:
-            if user['username'] == username and user['password'] == hash_password(password):
-                return True, user
-        return False, "Invalid username or password"
-    except:
-        return False, "Login system error"
-
-def create_user(username, password, email):
-    """Create a new user."""
-    try:
-        recipes, users = load_data()
-        
-        # Check if username already exists
-        if any(user['username'] == username for user in users):
-            return False, "Username already exists"
-        
-        # Check if email already exists
-        if any(user['email'] == email for user in users):
-            return False, "Email already registered"
-        
-        new_user = {
-            'username': username,
-            'password': hash_password(password),
-            'email': email,
-            'role': 'user',
-            'created_at': datetime.now().isoformat(),
-            'is_active': True
-        }
-        
-        users.append(new_user)
-        save_data(recipes, users)
-        return True, "User created successfully!"
-    except:
-        return False, "Registration failed"
-
-def get_user_stats():
-    """Get user statistics for admin panel."""
-    try:
-        _, users = load_data()
-        return {
-            'total_users': len(users),
-            'active_users': len([u for u in users if u.get('is_active', True)]),
-            'admin_users': len([u for u in users if u.get('role') == 'admin']),
-            'regular_users': len([u for u in users if u.get('role') != 'admin'])
-        }
-    except:
-        return {'total_users': 0, 'active_users': 0, 'admin_users': 0, 'regular_users': 0}
-
-def get_all_users():
-    """Get all users for admin management."""
-    try:
-        _, users = load_data()
-        # Convert ISO strings back to datetime objects for display
-        for user in users:
-            if isinstance(user['created_at'], str):
-                user['created_at'] = datetime.fromisoformat(user['created_at'])
-        return users
-    except:
-        return []
-
-def update_user_status(username, is_active):
-    """Update user active status."""
-    try:
-        recipes, users = load_data()
-        for user in users:
-            if user['username'] == username:
-                user['is_active'] = is_active
-                break
-        save_data(recipes, users)
-        return True
-    except:
-        return False
-
-def delete_user(username):
-    """Delete a user."""
-    try:
-        recipes, users = load_data()
-        users[:] = [user for user in users if user['username'] != username]
-        save_data(recipes, users)
-        return True
-    except:
-        return False
 
 def download_image(url, filename):
     try:
@@ -362,17 +274,18 @@ def init_sample_recipes():
     
     return sample_recipes
 
+# Initialize data files if they don't exist
 def init_data_files():
-    """Initialize data files if they don't exist"""
     if not RECIPES_FILE.exists():
         with open(RECIPES_FILE, 'w') as f:
-            json.dump([], f)
+            json.dump(init_sample_recipes(), f)
     if not USERS_FILE.exists():
         with open(USERS_FILE, 'w') as f:
             json.dump([], f)
 
+init_data_files()
+
 def load_data():
-    """Load data from JSON files"""
     with open(RECIPES_FILE, 'r') as f:
         recipes = json.load(f)
     with open(USERS_FILE, 'r') as f:
@@ -380,11 +293,10 @@ def load_data():
     return recipes, users
 
 def save_data(recipes, users):
-    """Save data to JSON files"""
     with open(RECIPES_FILE, 'w') as f:
-        json.dump(recipes, f, indent=2)
+        json.dump(recipes, f)
     with open(USERS_FILE, 'w') as f:
-        json.dump(users, f, indent=2)
+        json.dump(users, f)
 
 def main():
     st.set_page_config(
@@ -394,16 +306,6 @@ def main():
     )
 
     st.title("🍳 Recipe Manager")
-    
-    # Initialize data files and sample recipes
-    init_data_files()
-    recipes, users = load_data()
-    
-    # Add sample recipes if no recipes exist
-    if not recipes:
-        sample_recipes = init_sample_recipes()
-        save_data(sample_recipes, users)
-        recipes = sample_recipes
     
     # Sidebar navigation
     st.sidebar.title("Navigation")
@@ -437,13 +339,15 @@ def main():
         st.sidebar.success(f"Logged in as: {st.session_state.user}")
         if st.session_state.user_role == 'admin':
             st.sidebar.info("Role: Administrator")
-        if st.sidebar.button("Logout", use_container_width=True):
+        if st.button("Logout", use_container_width=True):
             st.session_state.user = None
             st.session_state.user_role = None
             st.session_state.active_tab = "Home"
-            st.rerun()
+            st.experimental_rerun()
     else:
         st.sidebar.info("Not logged in")
+
+    recipes, users = load_data()
 
     if st.session_state.active_tab == "Home":
         st.header("Welcome to Recipe Manager!")
@@ -499,23 +403,23 @@ def main():
                             with col1:
                                 if st.button("Edit Recipe", key=f"edit_{recipe['id']}"):
                                     st.session_state.editing_recipe = recipe
-                                    st.rerun()
+                                    st.experimental_rerun()
                             with col2:
                                 if st.button("Delete Recipe", key=f"delete_{recipe['id']}"):
                                     recipes.remove(recipe)
                                     save_data(recipes, users)
                                     st.success("Recipe deleted successfully!")
-                                    st.rerun()
+                                    st.experimental_rerun()
             else:
                 st.info("You haven't created any recipes yet. Start by adding your first recipe!")
                 if st.button("Add New Recipe"):
                     st.session_state.active_tab = "Add Recipe"
-                    st.rerun()
+                    st.experimental_rerun()
         else:
             st.warning("Please log in to view your recipes.")
             if st.button("Login"):
                 st.session_state.active_tab = "Login/Register"
-                st.rerun()
+                st.experimental_rerun()
 
     elif st.session_state.active_tab == "Add Recipe":
         st.header("Add New Recipe")
@@ -611,7 +515,7 @@ def main():
                         st.session_state.user = result['username']
                         st.session_state.user_role = result['role']
                         st.success("Logged in successfully!")
-                        st.rerun()
+                        st.experimental_rerun()
                     else:
                         st.error(result)
         
@@ -670,19 +574,19 @@ def main():
                             if st.button("Deactivate User", key=f"deactivate_{user['username']}"):
                                 update_user_status(user['username'], False)
                                 st.success(f"User {user['username']} deactivated")
-                                st.rerun()
+                                st.experimental_rerun()
                         else:
                             if st.button("Activate User", key=f"activate_{user['username']}"):
                                 update_user_status(user['username'], True)
                                 st.success(f"User {user['username']} activated")
-                                st.rerun()
+                                st.experimental_rerun()
                 
                 with col2:
                     if user['username'] != 'admin':  # Prevent deleting main admin
                         if st.button("Delete User", key=f"delete_{user['username']}"):
                             if delete_user(user['username']):
                                 st.success(f"User {user['username']} deleted")
-                                st.rerun()
+                                st.experimental_rerun()
                             else:
                                 st.error("Failed to delete user")
 
