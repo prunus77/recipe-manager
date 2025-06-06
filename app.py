@@ -8,10 +8,6 @@ import os
 from pathlib import Path
 import requests
 from io import BytesIO
-from db_utils import (
-    create_user, verify_user, get_all_users,
-    update_user_status, delete_user, get_user_stats
-)
 
 # Initialize session state
 if 'user' not in st.session_state:
@@ -274,18 +270,17 @@ def init_sample_recipes():
     
     return sample_recipes
 
-# Initialize data files if they don't exist
 def init_data_files():
+    """Initialize data files if they don't exist"""
     if not RECIPES_FILE.exists():
         with open(RECIPES_FILE, 'w') as f:
-            json.dump(init_sample_recipes(), f)
+            json.dump([], f)
     if not USERS_FILE.exists():
         with open(USERS_FILE, 'w') as f:
             json.dump([], f)
 
-init_data_files()
-
 def load_data():
+    """Load data from JSON files"""
     with open(RECIPES_FILE, 'r') as f:
         recipes = json.load(f)
     with open(USERS_FILE, 'r') as f:
@@ -293,10 +288,11 @@ def load_data():
     return recipes, users
 
 def save_data(recipes, users):
+    """Save data to JSON files"""
     with open(RECIPES_FILE, 'w') as f:
-        json.dump(recipes, f)
+        json.dump(recipes, f, indent=2)
     with open(USERS_FILE, 'w') as f:
-        json.dump(users, f)
+        json.dump(users, f, indent=2)
 
 def main():
     st.set_page_config(
