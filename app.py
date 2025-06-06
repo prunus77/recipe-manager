@@ -10,15 +10,7 @@ import requests
 from io import BytesIO
 from db_utils import (
     create_user, verify_user, get_all_users,
-    update_user_status, delete_user, get_user_stats,
-    get_all_recipes, create_recipe
-)
-
-# Set page config at the very beginning
-st.set_page_config(
-    page_title="Recipe Manager",
-    page_icon="🍳",
-    layout="wide"
+    update_user_status, delete_user, get_user_stats
 )
 
 # Initialize session state
@@ -26,31 +18,20 @@ if 'user' not in st.session_state:
     st.session_state.user = None
 if 'user_role' not in st.session_state:
     st.session_state.user_role = None
-if 'active_tab' not in st.session_state:
-    st.session_state.active_tab = "Home"
 
-# Cache the data loading functions
-@st.cache_data(ttl=300)  # Cache for 5 minutes
-def load_recipes():
-    return get_all_recipes()
+# Create data directory if it doesn't exist
+DATA_DIR = Path("data")
+DATA_DIR.mkdir(exist_ok=True)
 
-@st.cache_data(ttl=300)
-def load_user_stats():
-    return get_user_stats()
-
-# Optimize image loading
-@st.cache_data(ttl=3600)  # Cache for 1 hour
-def load_image(image_path):
-    if os.path.exists(image_path):
-        return Image.open(image_path)
-    return None
+# File paths
+RECIPES_FILE = DATA_DIR / "recipes.json"
+USERS_FILE = DATA_DIR / "users.json"
 
 def download_image(url, filename):
     try:
         response = requests.get(url)
         if response.status_code == 200:
-            image_path = Path("data") / filename
-            image_path.parent.mkdir(exist_ok=True)
+            image_path = DATA_DIR / filename
             with open(image_path, 'wb') as f:
                 f.write(response.content)
             return str(image_path)
@@ -60,6 +41,7 @@ def download_image(url, filename):
 def init_sample_recipes():
     sample_recipes = [
         {
+            'id': 1,
             'name': 'Classic Margherita Pizza',
             'category': 'Dinner',
             'tags': ['Quick', 'Vegetarian'],
@@ -86,6 +68,7 @@ def init_sample_recipes():
             'image_url': 'https://images.unsplash.com/photo-1604382354936-07c5d9983bd3'
         },
         {
+            'id': 2,
             'name': 'Chocolate Chip Cookies',
             'category': 'Dessert',
             'tags': ['Quick', 'Budget-friendly'],
@@ -111,6 +94,7 @@ def init_sample_recipes():
             'image_url': 'https://images.unsplash.com/photo-1499636136210-6f4ee915583e'
         },
         {
+            'id': 3,
             'name': 'Vegetable Stir Fry',
             'category': 'Lunch',
             'tags': ['Quick', 'Vegetarian', 'Budget-friendly'],
@@ -134,6 +118,7 @@ def init_sample_recipes():
             'image_url': 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd'
         },
         {
+            'id': 4,
             'name': 'Homemade Pasta Carbonara',
             'category': 'Dinner',
             'tags': ['Quick', 'Spicy'],
@@ -157,6 +142,7 @@ def init_sample_recipes():
             'image_url': 'https://images.unsplash.com/photo-1612874742237-6526221588e3'
         },
         {
+            'id': 5,
             'name': 'Avocado Toast',
             'category': 'Breakfast',
             'tags': ['Quick', 'Vegetarian', 'Budget-friendly'],
@@ -179,6 +165,7 @@ def init_sample_recipes():
             'image_url': 'https://images.unsplash.com/photo-1588137378633-dea1336ce1e2'
         },
         {
+            'id': 6,
             'name': 'Greek Salad',
             'category': 'Lunch',
             'tags': ['Vegetarian', 'Healthy', 'Quick'],
@@ -204,6 +191,7 @@ def init_sample_recipes():
             'image_url': 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c'
         },
         {
+            'id': 7,
             'name': 'Chicken Curry',
             'category': 'Dinner',
             'tags': ['Spicy', 'Comfort Food'],
@@ -228,6 +216,7 @@ def init_sample_recipes():
             'image_url': 'https://images.unsplash.com/photo-1585937421612-70a008356fbe'
         },
         {
+            'id': 8,
             'name': 'Smoothie Bowl',
             'category': 'Breakfast',
             'tags': ['Vegetarian', 'Healthy', 'Quick'],
@@ -249,6 +238,7 @@ def init_sample_recipes():
             'image_url': 'https://images.unsplash.com/photo-1626074353765-517a681e40be'
         },
         {
+            'id': 9,
             'name': 'Beef Tacos',
             'category': 'Dinner',
             'tags': ['Quick', 'Spicy', 'Budget-friendly'],
@@ -277,18 +267,52 @@ def init_sample_recipes():
     # Download and save images
     for recipe in sample_recipes:
         if 'image_url' in recipe:
-            image_path = download_image(recipe['image_url'], f"recipe_{recipe['name'].lower().replace(' ', '_')}.jpg")
+            image_path = download_image(recipe['image_url'], f"recipe_{recipe['id']}.jpg")
             if image_path:
                 recipe['image_path'] = image_path
             del recipe['image_url']
     
     return sample_recipes
 
+# Initialize data files if they don't exist
+def init_data_files():
+    if not RECIPES_FILE.exists():
+        with open(RECIPES_FILE, 'w') as f:
+            json.dump(init_sample_recipes(), f)
+    if not USERS_FILE.exists():
+        with open(USERS_FILE, 'w') as f:
+            json.dump([], f)
+
+init_data_files()
+
+def load_data():
+    with open(RECIPES_FILE, 'r') as f:
+        recipes = json.load(f)
+    with open(USERS_FILE, 'r') as f:
+        users = json.load(f)
+    return recipes, users
+
+def save_data(recipes, users):
+    with open(RECIPES_FILE, 'w') as f:
+        json.dump(recipes, f)
+    with open(USERS_FILE, 'w') as f:
+        json.dump(users, f)
+
 def main():
+    st.set_page_config(
+        page_title="Recipe Manager",
+        page_icon="🍳",
+        layout="wide"
+    )
+
     st.title("🍳 Recipe Manager")
     
     # Sidebar navigation
     st.sidebar.title("Navigation")
+    
+    # Initialize active_tab in session state if it doesn't exist
+    if 'active_tab' not in st.session_state:
+        st.session_state.active_tab = "Home"
     
     # Menu buttons in sidebar
     if st.sidebar.button("🏠 Home", use_container_width=True):
@@ -323,8 +347,7 @@ def main():
     else:
         st.sidebar.info("Not logged in")
 
-    # Load data with caching
-    recipes = load_recipes()
+    recipes, users = load_data()
 
     if st.session_state.active_tab == "Home":
         st.header("Welcome to Recipe Manager!")
@@ -335,13 +358,11 @@ def main():
         if recipes:
             # Create three columns for the featured recipes
             cols = st.columns(3)
-            for idx, recipe in enumerate(recipes[:9]):
-                with cols[idx % 3]:
+            for idx, recipe in enumerate(recipes[:9]):  # Changed from 3 to 9 recipes
+                with cols[idx % 3]:  # Use modulo to cycle through columns
                     st.subheader(recipe['name'])
-                    if 'image_path' in recipe:
-                        image = load_image(recipe['image_path'])
-                        if image:
-                            st.image(image, width=300)
+                    if 'image_path' in recipe and os.path.exists(recipe['image_path']):
+                        st.image(recipe['image_path'], width=300)
                     st.write(f"**Category:** {recipe['category']}")
                     st.write(f"**Tags:** {', '.join(recipe['tags'])}")
                     with st.expander("View Recipe Details"):
@@ -380,12 +401,13 @@ def main():
                             # Add edit and delete buttons
                             col1, col2 = st.columns(2)
                             with col1:
-                                if st.button("Edit Recipe", key=f"edit_{recipe['name']}"):
+                                if st.button("Edit Recipe", key=f"edit_{recipe['id']}"):
                                     st.session_state.editing_recipe = recipe
                                     st.experimental_rerun()
                             with col2:
-                                if st.button("Delete Recipe", key=f"delete_{recipe['name']}"):
+                                if st.button("Delete Recipe", key=f"delete_{recipe['id']}"):
                                     recipes.remove(recipe)
+                                    save_data(recipes, users)
                                     st.success("Recipe deleted successfully!")
                                     st.experimental_rerun()
             else:
@@ -419,6 +441,7 @@ def main():
             if submitted:
                 if name and ingredients and instructions:
                     new_recipe = {
+                        'id': len(recipes) + 1,
                         'name': name,
                         'category': category,
                         'tags': tags,
@@ -431,12 +454,13 @@ def main():
                     
                     if image:
                         # Save image to data directory
-                        image_path = DATA_DIR / f"recipe_{new_recipe['name'].lower().replace(' ', '_')}.{image.name.split('.')[-1]}"
+                        image_path = DATA_DIR / f"recipe_{new_recipe['id']}.{image.name.split('.')[-1]}"
                         with open(image_path, 'wb') as f:
                             f.write(image.getvalue())
                         new_recipe['image_path'] = str(image_path)
                     
                     recipes.append(new_recipe)
+                    save_data(recipes, users)
                     st.success("Recipe added successfully!")
                 else:
                     st.error("Please fill in all required fields.")
@@ -522,7 +546,7 @@ def main():
         
         # User Statistics
         st.subheader("User Statistics")
-        stats = load_user_stats()
+        stats = get_user_stats()
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.metric("Total Users", stats['total_users'])
