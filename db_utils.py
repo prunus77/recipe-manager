@@ -1,6 +1,5 @@
 from pymongo import MongoClient
 from datetime import datetime
-import bcrypt
 import os
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -22,7 +21,7 @@ def init_db():
     """Initialize database with admin user if not exists"""
     if not users.find_one({'role': 'admin'}):
         admin_password = os.getenv('ADMIN_PASSWORD', 'admin123')
-        hashed_password = bcrypt.hashpw(admin_password.encode('utf-8'), bcrypt.gensalt())
+        hashed_password = generate_password_hash(admin_password)
         users.insert_one({
             'username': 'admin',
             'password': hashed_password,
