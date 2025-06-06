@@ -5,9 +5,17 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: streamlit run app.py
     envVars:
-      - key: MONGODB_URI
+      - key: FIREBASE_PROJECT_ID
         sync: false
-      - key: MONGODB_DB_NAME
-        value: recipe_manager
+      - key: FIREBASE_PRIVATE_KEY_ID
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_CLIENT_ID
+        sync: false
+      - key: FIREBASE_CLIENT_CERT_URL
+        sync: false
     healthCheckPath: /
     autoDeploy: true 

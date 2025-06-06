@@ -1,28 +1,19 @@
-from pymongo import MongoClient
 from datetime import datetime
 import os
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
-from db_config import users_collection, recipes_collection
+from firebase_config import users_ref, recipes_ref
 
 # Load environment variables
 load_dotenv()
 
-# MongoDB connection
-MONGO_URI = os.getenv('MONGO_URI', 'mongodb://localhost:27017')
-client = MongoClient(MONGO_URI)
-db = client['recipe_manager']
-
-# Collections
-users = db['users']
-recipes = db['recipes']
-
 def init_db():
     """Initialize database with admin user if not exists"""
-    if not users.find_one({'role': 'admin'}):
+    admin_user = users_ref.where('role', '==', 'admin').limit(1).get()
+    if not admin_user:
         admin_password = os.getenv('ADMIN_PASSWORD', 'admin123')
         hashed_password = generate_password_hash(admin_password)
-        users.insert_one({
+        users_ref.add({
             'username': 'admin',
             'password': hashed_password,
             'role': 'admin',
@@ -33,7 +24,10 @@ def init_db():
 def create_user(username, password, email):
     try:
         # Check if username or email already exists
-        if users.find_one({"$or": [{"username": username}, {"email": email}]}):
+        existing_user = users_ref.where('username', '==', username).limit(1).get()
+        existing_email = users_ref.where('email', '==', email).limit(1).get()
+        
+        if existing_user or existing_email:
             return False, "Username or email already exists"
         
         # Create new user
@@ -46,18 +40,20 @@ def create_user(username, password, email):
             "created_at": datetime.now()
         }
         
-        users.insert_one(user)
+        users_ref.add(user)
         return True, "User created successfully"
     except Exception as e:
         return False, str(e)
 
 def verify_user(username, password):
     try:
-        user = users.find_one({"username": username})
-        if user and check_password_hash(user["password"], password):
+        user_docs = users_ref.where('username', '==', username).limit(1).get()
+        user = next(user_docs, None)
+        
+        if user and check_password_hash(user.to_dict()["password"], password):
             return True, {
-                "username": user["username"],
-                "role": user["role"]
+                "username": user.to_dict()["username"],
+                "role": user.to_dict()["role"]
             }
         return False, "Invalid username or password"
     except Exception as e:
@@ -65,39 +61,43 @@ def verify_user(username, password):
 
 def get_all_users():
     try:
-        return list(users.find({}, {"password": 0}))
+        users = users_ref.stream()
+        return [{"id": user.id, **user.to_dict()} for user in users]
     except Exception as e:
         return []
 
 def update_user_status(username, is_active):
     try:
-        result = users.update_one(
-            {"username": username},
-            {"$set": {"is_active": is_active}}
-        )
-        return result.modified_count > 0
+        user_docs = users_ref.where('username', '==', username).limit(1).get()
+        user = next(user_docs, None)
+        if user:
+            user.reference.update({"is_active": is_active})
+            return True
+        return False
     except Exception:
         return False
 
 def delete_user(username):
     try:
-        result = users.delete_one({"username": username})
-        return result.deleted_count > 0
+        user_docs = users_ref.where('username', '==', username).limit(1).get()
+        user = next(user_docs, None)
+        if user:
+            user.reference.delete()
+            return True
+        return False
     except Exception:
         return False
 
 def get_user_stats():
     try:
-        total_users = users.count_documents({})
-        active_users = users.count_documents({"is_active": True})
-        admin_users = users.count_documents({"role": "admin"})
-        regular_users = users.count_documents({"role": "user"})
+        users = users_ref.stream()
+        users_list = [user.to_dict() for user in users]
         
         return {
-            "total_users": total_users,
-            "active_users": active_users,
-            "admin_users": admin_users,
-            "regular_users": regular_users
+            "total_users": len(users_list),
+            "active_users": sum(1 for user in users_list if user.get("is_active", True)),
+            "admin_users": sum(1 for user in users_list if user.get("role") == "admin"),
+            "regular_users": sum(1 for user in users_list if user.get("role") == "user")
         }
     except Exception:
         return {
