@@ -2,7 +2,10 @@ services:
   - type: web
     name: recipe-manager
     env: python
-    buildCommand: pip install -r requirements.txt
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+      pip install werkzeug==2.3.7
     startCommand: streamlit run app.py
     envVars:
       - key: FIREBASE_PROJECT_ID

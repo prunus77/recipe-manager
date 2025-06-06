@@ -1,7 +1,14 @@
 from datetime import datetime
 import os
 from dotenv import load_dotenv
-from werkzeug.security import generate_password_hash, check_password_hash
+try:
+    from werkzeug.security import generate_password_hash, check_password_hash
+except ImportError:
+    print("Installing werkzeug...")
+    import subprocess
+    subprocess.check_call(["pip", "install", "werkzeug==2.3.7"])
+    from werkzeug.security import generate_password_hash, check_password_hash
+
 from firebase_config import users_ref, recipes_ref
 
 # Load environment variables
